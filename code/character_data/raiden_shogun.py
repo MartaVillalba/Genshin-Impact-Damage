@@ -1,3 +1,5 @@
+import pandas as pd
+
 class RaidenShogun():
 
     def __init__(self, data):
@@ -41,6 +43,7 @@ class RaidenShogun():
                 'Base DMG': [401, 431, 461, 501, 531, 561, 601, 641, 681, 721, 762, 802, 852, 902]
             }
         }
+        self.calculate_burst_damage()
 
     def calculate_burst_base_dmg(self):
         percentage = self.abilities['Burst']['Base DMG'][self.burst_level-1]
@@ -88,6 +91,7 @@ class RaidenShogun():
         self.mean_dmg = (self.crit_rate * self.crit_real_dmg + (100 - self.crit_rate) * self.real_dmg)/100
 
     def calculate_burst_damage(self):
+        self.percentage_bonus = 0
         self.calculate_burst_base_dmg()
         self.calculate_electro_dmg()
         self.calculate_weapon_bonus()
@@ -98,3 +102,12 @@ class RaidenShogun():
         self.calculate_def_multiplier()
         self.calculate_real_dmg()
         self.calculate_mean_dmg()
+
+    def print_results(self):
+        results_df = pd.DataFrame({'Character': [self.name],
+                                   'DMG (non crit)': [int(self.real_dmg)], 
+                                   'DMG (crit)': [int(self.crit_real_dmg)],
+                                   'Mean DMG': [int(self.mean_dmg)]})
+        return results_df
+
+
