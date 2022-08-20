@@ -1,39 +1,12 @@
-import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from character_data.character import Character
 
 
-class RaidenShogun:
+class RaidenShogun(Character):
     def __init__(self, data):
-        self.name = data["Character"]
-        self.description = data["Description"]
-        self.constellation = data["Constellation"]
-        self.level = data["Level"]
-        self.atk = data["ATK"]
-        self.base_crit_rate = data["CRIT rate"]
-        self.total_crit_rate = data["CRIT rate"]
-        self.crit_dmg = data["CRIT DMG"]
-        self.energy_recharge = data["ER"]
-        self.base_electro_dmg = data["Electro DMG"]
-        self.total_electro_dmg = data["Electro DMG"]
-        self.attack_level = data["Normal Attack level"]
-        self.skill_level = data["Skill level"]
-        self.burst_level = data["Burst level"]
-        self.weapon = data["Weapon"]
-        self.weapon_ref = data["Weapon refinement"]
-        self.artifacts = data["Artifacts"]
-        self.base_dmg = 0
-        self.special_multiplier = 1
-        self.flat_bonus = 0
-        self.percentage_bonus = 0
-        self.out_dmg = 0
-        self.crit_out_dmg = 0
-        self.real_dmg = 0
-        self.crit_real_dmg = 0
-        self.mean_dmg = 0
-        self.def_multiplier = 0
-        self.res_multiplier = 0.9
+        Character.__init__(self, data)
         self.abilities = {
             "Normal Attack": {},
             "Skill": {
@@ -50,7 +23,7 @@ class RaidenShogun:
                     211,
                     222.7,
                     234.4,
-                    249.1,
+                    249.1
                 ],
                 "Coordinated ATK DMG": [
                     42,
@@ -65,7 +38,7 @@ class RaidenShogun:
                     75.6,
                     79.8,
                     84,
-                    89.3,
+                    89.3
                 ],
                 "Elemental Burst DMG Bonus": [
                     0.22,
@@ -80,8 +53,8 @@ class RaidenShogun:
                     0.3,
                     0.3,
                     0.3,
-                    0.3,
-                ],
+                    0.3
+                ]
             },
             "Burst": {
                 "Energy Cost": 90,
@@ -99,9 +72,9 @@ class RaidenShogun:
                     762,
                     802,
                     852,
-                    902,
-                ],
-            },
+                    902
+                ]
+            }
         }
         self.calculate_burst_damage()
 
@@ -110,35 +83,13 @@ class RaidenShogun:
         self.base_dmg = percentage / 100 * self.atk
 
     def calculate_electro_dmg(self):
+        self.percentage_bonus += self.electro_dmg
         if self.level > 20:
-            self.total_electro_dmg += 0.4 * (self.energy_recharge - 100)
-        self.percentage_bonus += self.total_electro_dmg
-
-    def calculate_weapon_bonus(self):
-        if self.weapon == "The Catch":
-            dmg_bonus = [16, 20, 24, 28, 32]
-            crit_rate_bonus = [6, 7.5, 9, 10.5, 12]
-            # Assume burst bonus as global bonus because only burst dmg is going to be calculated
-            self.percentage_bonus += dmg_bonus[self.weapon_ref - 1]
-            self.total_crit_rate += crit_rate_bonus[self.weapon_ref - 1]
-
-    def calculate_artifacts_bonus(self):
-        if {"Emblem of Severed Fate": "4P"} in self.artifacts:
-            self.percentage_bonus += min(0.25 * self.energy_recharge, 75)
+            self.percentage_bonus += 0.4 * (self.energy_recharge - 100)
 
     def calculate_skill_bonus(self):
-        bonus = self.abilities["Skill"]["Elemental Burst DMG Bonus"][
-            self.skill_level - 1
-        ]
+        bonus = self.abilities["Skill"]["Elemental Burst DMG Bonus"][self.skill_level - 1]
         self.percentage_bonus += bonus * self.abilities["Burst"]["Energy Cost"]
-
-    def calculate_out_dmg(self):
-        self.out_dmg = (
-            self.base_dmg * self.special_multiplier + self.flat_bonus
-        ) * (1 + self.percentage_bonus / 100)
-
-    def calculate_crit_dmg(self):
-        self.crit_out_dmg = self.out_dmg * (1 + self.crit_dmg / 100)
 
     def calculate_def_multiplier(self, enemy_level=85):
         if self.constellation == "C2":
@@ -148,20 +99,6 @@ class RaidenShogun:
         self.def_multiplier = (self.level + 100) / (
             k * (enemy_level + 100) + self.level + 100
         )
-
-    def calculate_real_dmg(self):
-        self.crit_real_dmg = (
-            self.crit_out_dmg * self.def_multiplier * self.res_multiplier
-        )
-        self.real_dmg = (
-            self.out_dmg * self.def_multiplier * self.res_multiplier
-        )
-
-    def calculate_mean_dmg(self):
-        self.mean_dmg = (
-            self.total_crit_rate * self.crit_real_dmg
-            + (100 - self.total_crit_rate) * self.real_dmg
-        ) / 100
 
     def calculate_burst_damage(self):
         self.reset_stats()
@@ -175,31 +112,6 @@ class RaidenShogun:
         self.calculate_def_multiplier()
         self.calculate_real_dmg()
         self.calculate_mean_dmg()
-
-    def reset_stats(self):
-        self.percentage_bonus = 0
-        self.total_crit_rate = self.base_crit_rate
-        self.total_electro_dmg = self.base_electro_dmg
-
-    def print_results(self):
-        results_df = pd.DataFrame(
-            {
-                "Character": [self.name],
-                "Description": [self.description],
-                "DMG (non crit)": [int(self.real_dmg)],
-                "DMG (crit)": [int(self.crit_real_dmg)],
-                "Mean DMG": [int(self.mean_dmg)],
-            }
-        )
-        results_df.index = np.arange(1, len(results_df) + 1)
-        return results_df
-
-    def compare_builds(self, other):
-        first_build = self.print_results()
-        second_build = other.print_results()
-        results_df = pd.concat([first_build, second_build])
-        results_df.index = np.arange(1, len(results_df) + 1)
-        return results_df
 
     def calculate_dmg_vs_er(self, er_values, atk_values):
         results = np.zeros(shape=(len(atk_values), len(er_values)))
@@ -258,7 +170,6 @@ class RaidenShogun:
                 ),
                 secondary_y=True
             )
-
         fig.update_xaxes(title_text="Mean DMG")
         fig.update_yaxes(title_text="ATK", secondary_y=False)
         fig.update_yaxes(title_text="ER", secondary_y=True)
